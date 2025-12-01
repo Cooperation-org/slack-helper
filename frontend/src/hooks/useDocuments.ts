@@ -57,7 +57,7 @@ export function useClearAllDocuments() {
 
   return useMutation({
     mutationFn: () => apiClient.clearAllDocuments(),
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       const { documents_deleted, collections_deleted } = data;
       toast.success(`Cleared ${documents_deleted} documents and ${collections_deleted?.length || 0} collections`);
       queryClient.invalidateQueries({ queryKey: ['documents'] });

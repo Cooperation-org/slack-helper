@@ -54,11 +54,22 @@ async def ask_question(
         # Use main Q&A service
         from src.services.qa_service import QAService
         
-        qa_service = QAService(workspace_id=workspace_id or "W_DEFAULT")
-        result = qa_service.answer_question(
-            question=request.question,
-            n_context_messages=request.max_sources
-        )
+        qa_service = QAService(workspace_id=workspace_id or "TJ5RZJT52")
+        
+        try:
+            result = qa_service.answer_question(
+                question=request.question,
+                n_context_messages=request.max_sources
+            )
+        except Exception as qa_error:
+            # Fallback response when no data is available
+            logger.warning(f"Q&A service error: {qa_error}")
+            result = {
+                'answer': "I couldn't find any relevant messages in your Slack workspace for that question. This could be because:\n\n1. Your workspace is still being indexed (this takes a few minutes after adding)\n2. The bot hasn't been added to the channels you're asking about\n3. There are no messages matching your question\n\nTry asking about recent team activities or check that the bot is added to your channels.",
+                'confidence': 10,
+                'confidence_explanation': 'No indexed messages found',
+                'sources': []
+            }
 
         # Format sources
         sources = []

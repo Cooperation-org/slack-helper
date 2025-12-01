@@ -4,10 +4,10 @@ Minimal FastAPI server for Q&A functionality
 """
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi import FastAPI, HTTPException, Depends, Response, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import logging
 
 # Setup logging
@@ -145,6 +145,35 @@ async def get_documents(current_user: dict = Depends(get_current_user)):
         "page": 1,
         "page_size": 20
     }
+
+@app.post("/api/documents/upload")
+async def upload_documents(
+    files: List[UploadFile] = File(...),
+    workspace_id: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """Mock document upload endpoint"""
+    results = []
+    for file in files:
+        content = await file.read()
+        results.append({
+            'filename': file.filename,
+            'status': 'indexed',
+            'document_id': f'doc_{hash(file.filename)}',
+            'chunk_count': len(content) // 1000 + 1
+        })
+    
+    return {
+        "success": True,
+        "uploaded_count": len(files),
+        "failed_count": 0,
+        "results": results
+    }
+
+@app.delete("/api/documents/{document_id}")
+async def delete_document(document_id: str, current_user: dict = Depends(get_current_user)):
+    """Mock document delete endpoint"""
+    return {"success": True, "message": "Document deleted"}
 
 @app.options("/{path:path}")
 async def options_handler(path: str):

@@ -93,33 +93,68 @@ async def create_workspace(
     workspace_data: WorkspaceCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new workspace"""
+    """Create a new workspace with automatic backfill"""
     try:
+        # First test the connection
+        from slack_sdk.web.async_client import AsyncWebClient
+        
+        client = AsyncWebClient(token=workspace_data.bot_token)
+        auth_response = await client.auth_test()
+        team_info = await client.team_info()
+        
+        workspace_id = team_info["team"]["id"]
+        team_name = team_info["team"]["name"]
+        
         conn = DatabaseConnection.get_connection()
         cursor = conn.cursor()
         
-        # For now, create a simple workspace entry
-        workspace_id = f"W{hash(workspace_data.workspace_name) % 1000000:06d}"
-        
+        # Create workspace entry
         cursor.execute("""
             INSERT INTO workspaces (workspace_id, team_name, is_active, org_id)
             VALUES (%s, %s, %s, %s)
-            ON CONFLICT (workspace_id) DO NOTHING
-        """, (workspace_id, workspace_data.workspace_name, True, current_user.get("org_id", 1)))
+            ON CONFLICT (workspace_id) DO UPDATE SET 
+                team_name = EXCLUDED.team_name,
+                is_active = EXCLUDED.is_active,
+                org_id = EXCLUDED.org_id
+        """, (workspace_id, team_name, True, current_user.get("org_id", 8)))
+        
+        # Store credentials
+        cursor.execute("""
+            INSERT INTO installations (workspace_id, bot_token, app_token, signing_secret)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (workspace_id) DO UPDATE SET
+                bot_token = EXCLUDED.bot_token,
+                app_token = EXCLUDED.app_token,
+                signing_secret = EXCLUDED.signing_secret
+        """, (workspace_id, workspace_data.bot_token, workspace_data.app_token, workspace_data.signing_secret))
         
         conn.commit()
         
+        # Trigger automatic backfill
+        try:
+            from src.services.backfill_service import BackfillService
+            backfill_service = BackfillService(workspace_id=workspace_id, bot_token=workspace_data.bot_token)
+            
+            # Start backfill in background (last 7 days)
+            import asyncio
+            asyncio.create_task(backfill_service.backfill_messages(days=90))
+            
+            logger.info(f"Started automatic backfill for workspace {workspace_id}")
+        except Exception as backfill_error:
+            logger.warning(f"Backfill failed but workspace created: {backfill_error}")
+        
         return {
             "workspace_id": workspace_id,
-            "team_name": workspace_data.workspace_name,
-            "status": "created"
+            "team_name": team_name,
+            "status": "created",
+            "backfill_started": True
         }
         
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create workspace"
+            detail=f"Failed to create workspace: {str(e)}"
         )
     finally:
         if 'cursor' in locals():
@@ -414,38 +449,54 @@ async def test_connection(
             detail=f"Connection test failed: {str(e)}"
         )
 
+class BackfillRequest(BaseModel):
+    days_back: int = 7
+
 @router.post("/{workspace_id}/backfill", response_model=dict)
 async def backfill_workspace(
     workspace_id: str,
-    backfill_data: dict,
+    backfill_data: BackfillRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """Backfill messages from Slack workspace"""
     try:
         from src.services.backfill_service import BackfillService
         
-        bot_token = backfill_data.get("bot_token")
-        days_back = backfill_data.get("days_back", 7)
+        logger.info(f"Backfill request for workspace {workspace_id} with {backfill_data.days_back} days")
         
-        if not bot_token:
+        conn = DatabaseConnection.get_connection()
+        cursor = conn.cursor()
+        
+        # Get bot token from database
+        cursor.execute("""
+            SELECT i.bot_token FROM installations i
+            JOIN workspaces w ON i.workspace_id = w.workspace_id
+            WHERE w.workspace_id = %s AND w.org_id = %s
+        """, (workspace_id, current_user.get("org_id", 8)))
+        
+        result = cursor.fetchone()
+        if not result:
+            logger.error(f"No credentials found for workspace {workspace_id} and org {current_user.get('org_id', 8)}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Bot token is required"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found or no credentials stored"
             )
+        
+        bot_token = result[0]
+        logger.info(f"Found bot token for workspace {workspace_id}")
         
         # Initialize backfill service
         backfill_service = BackfillService(workspace_id=workspace_id, bot_token=bot_token)
         
         # Run backfill
-        result = await backfill_service.backfill_messages(days=days_back)
+        import asyncio
+        asyncio.create_task(backfill_service.backfill_messages(days=backfill_data.days_back))
         
         return {
             "success": True,
             "workspace_id": workspace_id,
-            "total_messages": result["total_messages"],
-            "channels_processed": result["channels_processed"],
-            "total_channels": result["total_channels"],
-            "errors": result["errors"]
+            "days_back": backfill_data.days_back,
+            "status": "backfill_started"
         }
         
     except HTTPException:
@@ -456,6 +507,11 @@ async def backfill_workspace(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Backfill failed: {str(e)}"
         )
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            DatabaseConnection.return_connection(conn)
 
 @router.get("/{workspace_id}/channels", response_model=dict)
 async def get_workspace_channels(

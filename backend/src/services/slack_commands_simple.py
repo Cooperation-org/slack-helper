@@ -16,7 +16,7 @@ from src.services.qa_service import QAService
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-WORKSPACE_ID = "W_DEFAULT"
+WORKSPACE_ID = "TJ5RZJT52"
 BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
 

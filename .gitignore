@@ -46,3 +46,4 @@ dist/
 build/
 *.egg-info/
 chromadb_data/
+chroma_db/

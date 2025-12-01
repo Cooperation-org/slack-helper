@@ -1,6 +1,6 @@
 # API Documentation
 
-🔌 **Slack Helper Bot REST API** - Complete API reference with endpoints, authentication, and examples.
+🔌 **Amebo REST API** - Complete API reference with endpoints, authentication, and examples.
 
 ## 🔐 Authentication
 
@@ -602,7 +602,7 @@ Import the Postman collection for easy API testing:
 ```json
 {
   "info": {
-    "name": "Slack Helper Bot API",
+    "name": "Amebo API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {

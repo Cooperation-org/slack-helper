@@ -1,6 +1,6 @@
 # System Architecture
 
-🏗️ **Slack Helper Bot Architecture** - Comprehensive overview of system design, components, and data flow.
+🏗️ **Amebo Architecture** - Comprehensive overview of system design, components, and data flow.
 
 ## 🎯 Architecture Overview
 

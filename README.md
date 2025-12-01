@@ -1,4 +1,4 @@
-# Slack Helper Bot - AI-Powered Workspace Intelligence
+# Amebo - AI-Powered Workspace Intelligence
 
 🤖 **Your Workspace Padi & Gist Partner** - Transform scattered workplace conversations and documents into accessible, intelligent insights.
 
@@ -7,9 +7,9 @@
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-## 🎯 What is Slack Helper Bot?
+## 🎯 What is Amebo?
 
-Slack Helper Bot is an enterprise-grade SaaS platform that serves as your team's intelligent knowledge companion. It transforms your Slack conversations, uploaded documents, and institutional knowledge into a searchable, AI-powered Q&A system.
+Amebo is an enterprise-grade SaaS platform that serves as your team's intelligent knowledge companion. It transforms your Slack conversations, uploaded documents, and institutional knowledge into a searchable, AI-powered Q&A system.
 
 ### 🚀 Key Benefits
 - **Instant Knowledge Access** - Find answers in seconds, not minutes

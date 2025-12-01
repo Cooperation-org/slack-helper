@@ -1,4 +1,4 @@
-# Slack Helper Bot - Backend
+# Amebo - Backend
 
 🐍 **FastAPI Backend** - High-performance Python API server with multi-tenant architecture and AI-powered Q&A capabilities.
 
